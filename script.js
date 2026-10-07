@@ -1,192 +1,114 @@
-const state = {
-  reservations: [
-    {
-      id: 1,
-      guestName: 'Sandra Lee',
-      guestEmail: 'sandra@example.com',
-      reservationDate: '2026-10-15',
-      reservationTime: '19:00',
-      partySize: 4,
-      tableNumber: 12,
-      notes: 'Window table preferred',
-      status: 'pending',
-    },
-    {
-      id: 2,
-      guestName: 'Marcus Hill',
-      guestEmail: 'marcus@example.com',
-      reservationDate: '2026-10-16',
-      reservationTime: '18:30',
-      partySize: 2,
-      tableNumber: 7,
-      notes: 'Anniversary dinner',
-      status: 'approved',
-    },
-  ],
+// =====================================================
+// PART 1: DATA, HELPERS
+// =====================================================
+
+// Labs and their number of seats
+const LABS = {
+  "ComLab 1": 40,
+  "ComLab 2": 30,
+  "AES": 25
 };
 
-const form = document.getElementById('reservationForm');
-const formMessage = document.getElementById('formMessage');
-const tableBody = document.getElementById('reservationTableBody');
+// Which status changes are allowed (status rules)
+const ALLOWED_CHANGES = {
+  Pending:   ["Approved", "Rejected", "Cancelled"],
+  Approved:  ["Cancelled"],
+  Rejected:  [],   // cannot be changed again
+  Cancelled: []    // cannot be changed again
+};
 
-function formatReservationDate(dateString) {
-  if (!dateString) return '—';
+// Load saved reservations from localStorage (or start with an empty list)
+let reservations = JSON.parse(localStorage.getItem("reservations")) || [];
 
-  const date = new Date(`${dateString}T00:00:00`);
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date);
+// Save the list to localStorage
+function saveReservations() {
+  localStorage.setItem("reservations", JSON.stringify(reservations));
 }
 
-function showFormMessage(message, type) {
-  if (!formMessage) return;
-
-  formMessage.textContent = message;
-  formMessage.className = `form-message ${type}`;
+// Show a success or error message at the top of the page
+function showMessage(text, type) {
+  const box = document.getElementById("message");
+  box.textContent = text;
+  box.className = "message " + type; // type is "success" or "error"
 }
 
-function validateReservation(reservation) {
-  const errors = [];
-
-  if (!reservation.guestName.trim()) {
-    errors.push('Guest name is required.');
-  }
-
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailPattern.test(reservation.guestEmail)) {
-    errors.push('Please provide a valid email address.');
-  }
-
-  if (!reservation.reservationDate) {
-    errors.push('Reservation date is required.');
-  }
-
-  if (!reservation.reservationTime) {
-    errors.push('Reservation time is required.');
-  }
-
-  const partySize = Number(reservation.partySize);
-  if (!Number.isInteger(partySize) || partySize < 1 || partySize > 20) {
-    errors.push('Party size must be between 1 and 20 guests.');
-  }
-
-  const tableNumber = Number(reservation.tableNumber);
-  if (!Number.isInteger(tableNumber) || tableNumber < 1 || tableNumber > 50) {
-    errors.push('Table number must be between 1 and 50.');
-  }
-
-  if (reservation.reservationDate && reservation.reservationTime) {
-    const reservationDate = new Date(`${reservation.reservationDate}T${reservation.reservationTime}`);
-    const now = new Date();
-
-    if (Number.isNaN(reservationDate.getTime())) {
-      errors.push('Please choose a valid date and time.');
-    } else if (reservationDate < now) {
-      errors.push('Reservation date and time cannot be in the past.');
-    }
-  }
-
-  const duplicate = state.reservations.some((entry) => {
-    return (
-      entry.guestEmail.toLowerCase() === reservation.guestEmail.toLowerCase() &&
-      entry.reservationDate === reservation.reservationDate &&
-      entry.reservationTime === reservation.reservationTime
-    );
+// Create the next reservation ID, e.g. R001, R002
+function generateId() {
+  let highest = 0;
+  reservations.forEach(function (r) {
+    const num = parseInt(r.id.replace("R", ""));
+    if (num > highest) highest = num;
   });
-
-  if (duplicate) {
-    errors.push('A reservation already exists for this guest at that time.');
-  }
-
-  return errors;
+  return "R" + String(highest + 1).padStart(3, "0");
 }
 
-function updateSummary() {
-  const totalReservations = document.getElementById('totalReservations');
-  const pendingCount = document.getElementById('pendingCount');
-  const approvedCount = document.getElementById('approvedCount');
-  const rejectedCount = document.getElementById('rejectedCount');
-
-  if (!totalReservations || !pendingCount || !approvedCount || !rejectedCount) return;
-
-  totalReservations.textContent = String(state.reservations.length);
-  pendingCount.textContent = String(state.reservations.filter((item) => item.status === 'pending').length);
-  approvedCount.textContent = String(state.reservations.filter((item) => item.status === 'approved').length);
-  rejectedCount.textContent = String(state.reservations.filter((item) => item.status === 'rejected').length);
+// Stop users from injecting HTML through text fields
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
-function renderReservationTable() {
-  if (!tableBody) return;
+// =====================================================
+// PART 2: MAKE A RESERVATION + VALIDATION
+// =====================================================
 
-  if (state.reservations.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="7" class="empty-state">No reservations available yet.</td></tr>';
+document.getElementById("reservation-form").addEventListener("submit", function (event) {
+  event.preventDefault(); // stop the page from reloading
+
+  // Read the form values
+  const teacher  = document.getElementById("teacher").value.trim();
+  const lab      = document.getElementById("lab").value;
+  const date     = document.getElementById("date").value;
+  const start    = document.getElementById("start").value;
+  const end      = document.getElementById("end").value;
+  const purpose  = document.getElementById("purpose").value.trim();
+  const students = parseInt(document.getElementById("students").value);
+
+  // All fields are required
+  if (!teacher || !lab || !date || !start || !end || !purpose || !students) {
+    showMessage("Please fill in all fields.", "error");
     return;
   }
 
-  tableBody.innerHTML = state.reservations
-    .map((reservation) => {
-      return `
-        <tr>
-          <td>
-            <strong>${reservation.guestName}</strong><br />
-            <span>${reservation.guestEmail}</span>
-          </td>
-          <td>${formatReservationDate(reservation.reservationDate)}</td>
-          <td>${reservation.reservationTime}</td>
-          <td>${reservation.partySize}</td>
-          <td>${reservation.tableNumber}</td>
-          <td>
-            <span class="status-badge status-${reservation.status}">${reservation.status}</span>
-          </td>
-          <td>
-            <div class="action-buttons">
-              <button type="button" class="action-btn approve-btn">Approve</button>
-              <button type="button" class="action-btn reject-btn">Reject</button>
-              <button type="button" class="action-btn cancel-btn">Cancel</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    })
-    .join('');
-}
+  // Number of students must be at least 1
+  if (students < 1) {
+    showMessage("Number of students must be at least 1.", "error");
+    return;
+  }
 
-function handleReservationSubmit(event) {
-  event.preventDefault();
+  // End time must be after start time
+  if (end <= start) {
+    showMessage("End time must be later than start time.", "error");
+    return;
+  }
 
-  const reservation = {
-    guestName: document.getElementById('guestName').value.trim(),
-    guestEmail: document.getElementById('guestEmail').value.trim(),
-    reservationDate: document.getElementById('reservationDate').value,
-    reservationTime: document.getElementById('reservationTime').value,
-    partySize: document.getElementById('partySize').value,
-    tableNumber: document.getElementById('tableNumber').value,
-    notes: document.getElementById('reservationNotes').value.trim(),
-    status: 'pending',
+  // Students cannot be more than the lab's seats
+  if (students > LABS[lab]) {
+    showMessage(lab + " only has " + LABS[lab] + " seats. You entered " + students + " students.", "error");
+    return;
+  }
+
+  // (The double-booking check will be added here on the feature branch)
+
+  // Create the reservation. It always starts as Pending.
+  const newReservation = {
+    id: generateId(),
+    teacher: teacher,
+    lab: lab,
+    date: date,
+    start: start,
+    end: end,
+    purpose: purpose,
+    students: students,
+    
+    status: "Pending",
+    reason: ""
   };
 
-  const errors = validateReservation(reservation);
-  if (errors.length > 0) {
-    showFormMessage(errors[0], 'error');
-    return;
-  }
-
-  state.reservations.push({
-    ...reservation,
-    id: Date.now(),
-  });
-
-  form.reset();
-  showFormMessage('Reservation created successfully.', 'success');
-  updateSummary();
-  renderReservationTable();
-}
-
-if (form) {
-  form.addEventListener('submit', handleReservationSubmit);
-}
-
-updateSummary();
-renderReservationTable();
+  reservations.push(newReservation);
+  saveReservations();
+  document.getElementById("reservation-form").reset();
+  showMessage("Reservation " + newReservation.id + " created. Status: Pending.", "success");
+  refreshAll();
+});
