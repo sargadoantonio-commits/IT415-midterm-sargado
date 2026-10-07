@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reservation Manager</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Operations</p>
+          <h1>Reservation Manager</h1>
+        </div>
+      </header>
+
+      <main class="dashboard-layout">
+        <section class="panel form-panel">
+          <h2>New Reservation</h2>
+
+          <form id="reservationForm" novalidate>
+            <div class="field-row">
+              <label for="guestName">Guest name</label>
+              <input id="guestName" name="guestName" type="text" placeholder="Jane Smith" />
+            </div>
+
+            <div class="field-row">
+              <label for="guestEmail">Email</label>
+              <input id="guestEmail" name="guestEmail" type="email" placeholder="jane@example.com" />
+            </div>
+
+            <div class="field-row">
+              <label for="reservationDate">Reservation date</label>
+              <input id="reservationDate" name="reservationDate" type="date" />
+            </div>
+
+            <div class="field-row">
+              <label for="reservationTime">Reservation time</label>
+              <input id="reservationTime" name="reservationTime" type="time" />
+            </div>
+
+            <div class="field-row">
+              <label for="partySize">Party size</label>
+              <input id="partySize" name="partySize" type="number" min="1" max="20" placeholder="4" />
+            </div>
+
+            <div class="field-row">
+              <label for="tableNumber">Table</label>
+              <input id="tableNumber" name="tableNumber" type="number" min="1" max="50" placeholder="12" />
+            </div>
+
+            <div class="field-row">
+              <label for="reservationNotes">Notes</label>
+              <textarea id="reservationNotes" name="reservationNotes" rows="3" placeholder="Special requests or notes"></textarea>
+            </div>
+
+            <button type="submit" class="primary-btn">Save reservation</button>
+            <p id="formMessage" class="form-message" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="panel overview-panel">
+          <h2>Overview</h2>
+          <div class="stats-grid">
+            <article class="stat-card total">
+              <span class="label">Total</span>
+              <strong id="totalReservations">0</strong>
+            </article>
+            <article class="stat-card pending">
+              <span class="label">Pending</span>
+              <strong id="pendingCount">0</strong>
+            </article>
+            <article class="stat-card approved">
+              <span class="label">Approved</span>
+              <strong id="approvedCount">0</strong>
+            </article>
+            <article class="stat-card rejected">
+              <span class="label">Rejected</span>
+              <strong id="rejectedCount">0</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel list-panel">
+          <div class="panel-header">
+            <h2>Reservations</h2>
+            <div class="toolbar">
+              <input id="searchInput" type="search" placeholder="Search guest, email, or table" />
+              <select id="statusFilter">
+                <option value="all">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Guest</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Party</th>
+                  <th>Table</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="reservationTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel schedule-panel">
+          <h2>Schedule</h2>
+          <div id="scheduleGrid" class="schedule-grid"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
