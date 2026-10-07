@@ -53,6 +53,17 @@ function escapeHtml(text) {
 // PART 2: MAKE A RESERVATION + VALIDATION
 // =====================================================
 
+// Find a Pending or Approved reservation in the same lab and date that overlaps the new time
+function findConflict(lab, date, start, end) {
+  return reservations.find(function (r) {
+    return r.lab === lab &&
+           r.date === date &&
+           (r.status === "Pending" || r.status === "Approved") &&
+           start < r.end &&
+           end > r.start;
+  });
+}
+
 document.getElementById("reservation-form").addEventListener("submit", function (event) {
   event.preventDefault(); // stop the page from reloading
 
@@ -92,19 +103,13 @@ document.getElementById("reservation-form").addEventListener("submit", function 
   // (The double-booking check will be added here on the feature branch)
 
   // Create the reservation. It always starts as Pending.
-  const newReservation = {
-    id: generateId(),
-    teacher: teacher,
-    lab: lab,
-    date: date,
-    start: start,
-    end: end,
-    purpose: purpose,
-    students: students,
-    
-    status: "Pending",
-    reason: ""
-  };
+    // Double-booking check
+  const conflict = findConflict(lab, date, start, end);
+  if (conflict) {
+    showMessage("Conflict: " + conflict.lab + " is already reserved by " + conflict.teacher +
+      " (" + conflict.id + ", " + conflict.start + " - " + conflict.end + ", " + conflict.status + ").", "error");
+    return;
+  }
 
   reservations.push(newReservation);
   saveReservations();
